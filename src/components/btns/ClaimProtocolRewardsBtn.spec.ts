@@ -18,7 +18,6 @@ jest.mock('@/composables/useNumbers');
 jest.mock('@/composables/queries/useProtocolRewardsQuery');
 jest.mock('@/services/web3/useWeb3');
 jest.mock('@/services/rpc-provider/rpc-provider.service');
-jest.mock('vue-i18n');
 
 describe.only('ClaimProtocolRewardsBtn', () => {
   it('should render props', () => {
