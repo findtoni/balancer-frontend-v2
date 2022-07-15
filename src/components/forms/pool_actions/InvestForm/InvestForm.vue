@@ -10,6 +10,7 @@ import TokenInput from '@/components/inputs/TokenInput/TokenInput.vue';
 import usePoolTransfers from '@/composables/contextual/pool-transfers/usePoolTransfers';
 import { isStableLike, isStablePhantom, usePool } from '@/composables/usePool';
 import useTokens from '@/composables/useTokens';
+import useVeBal from '@/composables/useVeBAL';
 import { LOW_LIQUIDITY_THRESHOLD } from '@/constants/poolLiquidity';
 import { bnum, findByAddress, isSameAddress } from '@/lib/utils';
 import { isRequired } from '@/lib/utils/validations';
@@ -58,7 +59,9 @@ const {
   validInputs,
   highPriceImpactAccepted,
   resetAmounts,
-  sor
+  sor,
+  singleAssetInAmount,
+  singleAssetInAddress
 } = useInvestState();
 
 const investMath = useInvestMath(
@@ -84,9 +87,20 @@ const {
   isMismatchedNetwork
 } = useWeb3();
 
-const { managedPoolWithTradingHalted, isWethPool, isStableLikePool } = usePool(
-  toRef(props, 'pool')
-);
+const {
+  managedPoolWithTradingHalted,
+  isWethPool,
+  isStableLikePool,
+  isStablePhantomPool
+} = usePool(toRef(props, 'pool'));
+const { veBalTokenInfo } = useVeBal();
+
+// console.log({
+//   isWethPool: isWethPool.value,
+//   isStableLikePool: isStableLikePool.value,
+//   isStablePhantomPool: isStablePhantomPool.value,
+//   isStablePhantom: isStablePhantom(props.pool.poolType)
+// });
 
 /**
  * COMPUTED
@@ -239,22 +253,35 @@ watch(useNativeAsset, shouldUseNativeAsset => {
       class="mb-4"
     />
 
-    <TokenInput
-      v-for="(n, i) in tokenAddresses.length"
-      :key="i"
-      :name="tokenAddresses[i]"
-      v-model:address="tokenAddresses[i]"
-      v-model:amount="amounts[i]"
-      v-model:isValid="validInputs[i]"
-      :weight="tokenWeight(tokenAddresses[i])"
-      :hintAmount="propAmountFor(i)"
-      :hint="hint(i)"
-      class="mb-4"
-      fixedToken
-      :options="tokenOptions(i)"
-      @update:amount="handleAmountChange($event, i)"
-      @update:address="handleAddressChange($event)"
-    />
+    <template v-if="isStablePhantomPool">
+      <TokenInput
+        :amount="singleAssetInAmount"
+        :address="singleAssetInAddress"
+        name="tokenIn"
+        @update:amount="amount => (singleAssetInAmount = amount)"
+        @update:address="address => (singleAssetInAddress = address)"
+        :excludedTokens="[veBalTokenInfo?.address]"
+      />
+    </template>
+
+    <template v-else>
+      <TokenInput
+        v-for="(n, i) in tokenAddresses.length"
+        :key="i"
+        :name="tokenAddresses[i]"
+        v-model:address="tokenAddresses[i]"
+        v-model:amount="amounts[i]"
+        v-model:isValid="validInputs[i]"
+        :weight="tokenWeight(tokenAddresses[i])"
+        :hintAmount="propAmountFor(i)"
+        :hint="hint(i)"
+        class="mb-4"
+        fixedToken
+        :options="tokenOptions(i)"
+        @update:amount="handleAmountChange($event, i)"
+        @update:address="handleAddressChange($event)"
+      />
+    </template>
 
     <InvestFormTotals
       :math="investMath"
