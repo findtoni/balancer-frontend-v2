@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeMount, ref, toRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, toRef, watch } from 'vue';
 // Composables
 import { useI18n } from 'vue-i18n';
 
@@ -10,8 +10,9 @@ import TokenInput from '@/components/inputs/TokenInput/TokenInput.vue';
 import usePoolTransfers from '@/composables/contextual/pool-transfers/usePoolTransfers';
 import { isStableLike, isStablePhantom, usePool } from '@/composables/usePool';
 import useTokens from '@/composables/useTokens';
+import useVeBal from '@/composables/useVeBAL';
 import { LOW_LIQUIDITY_THRESHOLD } from '@/constants/poolLiquidity';
-import { bnum, findByAddress, isSameAddress } from '@/lib/utils';
+import { bnum } from '@/lib/utils';
 import { isRequired } from '@/lib/utils/validations';
 import StakingProvider from '@/providers/local/staking/staking.provider';
 // Types
@@ -59,7 +60,9 @@ const {
   validInputs,
   highPriceImpactAccepted,
   resetAmounts,
-  sor
+  sor,
+  singleAssetInAmount,
+  singleAssetInAddress
 } = useInvestState();
 
 const investMath = useInvestMath(
@@ -75,7 +78,6 @@ const {
   highPriceImpact,
   maximizeAmounts,
   optimizeAmounts,
-  proportionalAmounts,
   batchSwapLoading
 } = investMath;
 
@@ -85,9 +87,15 @@ const {
   isMismatchedNetwork
 } = useWeb3();
 
-const { managedPoolWithTradingHalted, isWethPool, isStableLikePool } = usePool(
-  pool
-);
+const { managedPoolWithTradingHalted, isWethPool } = usePool(pool);
+const { veBalTokenInfo } = useVeBal();
+
+// console.log({
+//   isWethPool: isWethPool.value,
+//   isStableLikePool: isStableLikePool.value,
+//   isStablePhantomPool: isStablePhantomPool.value,
+//   isStablePhantom: isStablePhantom(props.pool.poolType)
+// });
 
 /**
  * COMPUTED
@@ -116,58 +124,6 @@ const investmentTokens = computed((): string[] => {
   }
   return props.pool.tokensList;
 });
-
-/**
- * METHODS
- */
-function handleAmountChange(value: string, index: number): void {
-  amounts.value[index] = value;
-
-  nextTick(() => {
-    if (forceProportionalInputs.value) {
-      amounts.value = [...proportionalAmounts.value];
-    }
-  });
-}
-
-function handleAddressChange(newAddress: string): void {
-  useNativeAsset.value = isSameAddress(newAddress, nativeAsset.address);
-}
-
-function tokenWeight(address: string): number {
-  if (isStableLike(props.pool.poolType)) return 0;
-  if (!props.pool?.onchain?.tokens) return 0;
-
-  if (isSameAddress(address, nativeAsset.address)) {
-    return (
-      findByAddress(props.pool.onchain.tokens, wrappedNativeAsset.value.address)
-        ?.weight || 1
-    );
-  }
-
-  return findByAddress(props.pool.onchain.tokens, address)?.weight || 1;
-}
-
-function propAmountFor(index: number): string {
-  if (isStableLikePool.value) return '0.0';
-
-  return bnum(proportionalAmounts.value[index]).gt(0)
-    ? proportionalAmounts.value[index]
-    : '0.0';
-}
-
-function hint(index: number): string {
-  return bnum(propAmountFor(index)).gt(0) ? t('proportionalSuggestion') : '';
-}
-
-function tokenOptions(index: number): string[] {
-  return isSameAddress(
-    props.pool.tokensList[index],
-    wrappedNativeAsset.value.address
-  )
-    ? [wrappedNativeAsset.value.address, nativeAsset.address]
-    : [];
-}
 
 // If ETH has a higher balance than WETH then use it for the input.
 function setNativeAssetByBalance(): void {
@@ -241,25 +197,17 @@ watch(useNativeAsset, shouldUseNativeAsset => {
     />
 
     <TokenInput
-      v-for="(n, i) in tokenAddresses"
-      :key="n"
-      :name="tokenAddresses[i]"
-      v-model:address="tokenAddresses[i]"
-      v-model:amount="amounts[i]"
-      v-model:isValid="validInputs[i]"
-      :weight="tokenWeight(tokenAddresses[i])"
-      :hintAmount="propAmountFor(i)"
-      :hint="hint(i)"
+      :amount="singleAssetInAmount"
+      :address="singleAssetInAddress"
+      name="tokenIn"
       class="mb-4"
-      fixedToken
-      :options="tokenOptions(i)"
-      @update:amount="handleAmountChange($event, i)"
-      @update:address="handleAddressChange($event)"
+      @update:amount="amount => (singleAssetInAmount = amount)"
+      @update:address="address => (singleAssetInAddress = address)"
+      :excludedTokens="[veBalTokenInfo?.address]"
     />
 
     <InvestFormTotals
       :math="investMath"
-      showTotalRow
       @maximize="maximizeAmounts"
       @optimize="optimizeAmounts"
     />
