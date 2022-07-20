@@ -83,7 +83,7 @@ function amountShare(address: string): string {
               <span class="font-numeric">
                 {{ fNum2(token.amount, FNumFormats.token) }}
               </span>
-              {{ tokenMap[token.address].symbol }}
+              {{ tokenMap[token.address]?.symbol }}
             </div>
           </div>
         </div>
@@ -104,7 +104,7 @@ function amountShare(address: string): string {
           :key="token.address"
         >
           <BalAsset :address="token.address" class="mr-2" />
-          <span>{{ tokenMap[token.address].symbol }}</span>
+          <span>{{ tokenMap[token.address]?.symbol }}</span>
         </div>
       </div>
       <div class="text-sm text-secondary font-numeric whitespace-nowrap">

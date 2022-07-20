@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, toRefs } from 'vue';
+import { computed, reactive, toRefs } from 'vue';
 
 import useNumbers, { FNumFormats } from '@/composables/useNumbers';
 import useWeb3 from '@/services/web3/useWeb3';
@@ -40,9 +40,9 @@ const {
   highPriceImpact,
   maximized,
   optimized,
-  batchSwapLoading,
+  swapRouteLoading,
   supportsPropotionalOptimization
-} = toRefs(props.math);
+} = toRefs(reactive(props.math));
 
 /**
  * COMPUTED
@@ -82,7 +82,7 @@ const optimizeBtnClasses = computed(() => ({
       <div class="p-2">{{ $t('priceImpact') }}</div>
       <div class="data-table-number-col">
         <div class="flex">
-          <span v-if="!batchSwapLoading">
+          <span v-if="!swapRouteLoading">
             {{ fNum2(priceImpact, FNumFormats.percent) }}
           </span>
           <BalLoadingBlock v-else class="w-10" />
